@@ -7,7 +7,11 @@ export default class MainScene extends Phaser.Scene {
   private turning: number;
   private directions = [ null, null, null, null, null ];
   private car: Phaser.GameObjects.Sprite;
+  private canvas: HTMLCanvasElement;
+  private layer: Phaser.Tilemaps.TilemapLayer;
 
+  private speed = 4
+  private lookahead = 16
 
   constructor() {
     super({ key: 'MainScene' })
@@ -20,13 +24,14 @@ export default class MainScene extends Phaser.Scene {
     console.log('Adding TilesetImage...')
     const tileset = map.addTilesetImage('tiles', 'base_tiles')
     console.log('Creating Layer...')
-    map.createLayer('Tile Layer 1', tileset)
+    this.layer = map.createLayer('Tile Layer 1', tileset)
     this.car = this.make.sprite({ key: 'car'}, true)
-    this.car.x = 12
+    this.car.x = 16
     this.car.y = 48
     this.car.angle = 90
 
-    this.cursors = this.input.keyboard.createCursorKeys();
+    this.cursors = this.input.keyboard.createCursorKeys()
+    this.canvas = this.game.canvas
   }
 
   update() {
@@ -58,8 +63,50 @@ export default class MainScene extends Phaser.Scene {
   }
 
   checkDirection(turnTo: number): void {
-    this.make.tween(this.car).updateTo('angle', 90)
-    this.make.tween(this.car).updateTo('speed', 100)
+    let tile;
+    if (turnTo === Phaser.RIGHT) {
+      tile = this.layer.getTileAtWorldXY(this.car.x + this.lookahead, this.car.y);
+    } else if (turnTo === Phaser.LEFT) {
+      tile = this.layer.getTileAtWorldXY(this.car.x - this.lookahead, this.car.y);
+    } else if (turnTo === Phaser.UP) {
+      tile = this.layer.getTileAtWorldXY(this.car.x, this.car.y - this.lookahead);
+    } else if (turnTo === Phaser.DOWN) {
+      tile = this.layer.getTileAtWorldXY(this.car.x, this.car.y + this.lookahead);
+    }
+    console.log(`tile.index=${tile?.index}`)
+    if (tile && tile.index != 20) {
+      this.move(turnTo)
+    }
+    // this.move(turnTo)
   }
 
+  move(direction: number): void {
+    if (direction === Phaser.RIGHT) {
+      this.car.angle = 90;
+      if (this.car.x + this.lookahead <= (this.canvas.width - this.car.width / 2)) {
+        this.car.x += this.speed;
+      }
+    } else if (direction === Phaser.LEFT) {
+      this.car.angle = -90;
+      if (this.car.x - this.lookahead >= 0) {
+        this.car.x -= this.speed;
+      }
+    } else if (direction === Phaser.UP) {
+      this.car.angle = 0;
+      if (this.car.y - this.lookahead > 0) {
+        this.car.y -= this.speed;
+      }
+    } else if (direction === Phaser.DOWN) {
+      this.car.angle = 180;
+      if (this.car.y + this.lookahead <= (this.canvas.height - this.car.height / 2)) {
+        this.car.y += this.speed;
+      }
+    }
+    let tile = this.layer.getTileAtWorldXY(this.car.x, this.car.y);
+    if (tile.index == 127 || tile.index == 29) {
+      this.car.x = 16
+      this.car.y = 48
+      this.car.angle = 90
+    }
+  }
 }
